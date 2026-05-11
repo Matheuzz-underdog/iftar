@@ -3,6 +3,15 @@
 const sharp        = require('sharp');
 const { createCanvas } = require('canvas');
 
+// ── Paletas ASCII por densidad ────────────────────────────────────────────────
+const ASCII_PALETTES = {
+  original:    ' `.-:+*%$#',          // 10 chars - estilo clásico
+  conservative: " .'-:;+=*%$#@",       // 12 chars - Opción B
+  expanded:    '$@B%8&WM#*o;:,. ',   // 12 chars - riv-javascript
+  detailed:     ' .,-:;+*%#@$',        // 13 chars - Opción D
+  maximum:      '$@B%8&WM#*o;:,. -+=<>/|(){}[]?',  // 25 chars - Opción E
+};
+
 // ── 1. Paleta ANSI 8 colores (fiel a tiv.vala) ──────────────────────────────
 const ANSI8 = [
   [0x00, 0x00, 0x00], // 0 black
@@ -121,6 +130,7 @@ async function render(imageBuffer, options = {}) {
     columns    = 80,      // ancho en celdas de caracteres
     cellSize   = 8,       // px por celda (alto = cellSize * 2)
     brightness = 0,       // -255 a 255
+    density    = 'detailed',  // ascii: original(10), conservative(12), expanded(12), detailed(13), maximum(25)
   } = options;
 
   const cellW = cellSize;
@@ -177,8 +187,10 @@ async function render(imageBuffer, options = {}) {
 
       if (mode === 'ascii') {
         // ASCII puro: luminancia → índice en paleta, sin color
-        const pal = ' `.-:+*%$#';
-        const lum = Math.floor((r + g + b) / 3);
+        // ITU-R BT.709 fórmula de luminancia (perceptualmente más precisa)
+        // Densidad configurable: original(10), conservative(12), expanded(12), detailed(13), maximum(25)
+        const pal = ASCII_PALETTES[density] || ASCII_PALETTES.detailed;
+        const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
         const idx = Math.min(Math.floor(lum / (255 / pal.length)), pal.length - 1);
 
         ctx.fillStyle = '#000000';

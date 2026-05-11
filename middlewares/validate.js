@@ -1,7 +1,8 @@
 'use strict';
 
-const VALID_MODES   = ['ascii', 'ansi', 'grey', '256', 'rgb'];
-const VALID_FORMATS = ['png', 'jpg', 'jpeg'];
+const VALID_MODES    = ['ascii', 'ansi', 'grey', '256', 'rgb'];
+const VALID_FORMATS  = ['png', 'jpg', 'jpeg'];
+const VALID_ASCII_DENSITY = ['original', 'conservative', 'expanded', 'detailed', 'maximum'];
 
 // Todos los parámetros de renderizado vienen como query strings (?mode=rgb&cellSize=8)
 // Este middleware los valida, convierte al tipo correcto y los adjunta en req.renderOptions
@@ -12,6 +13,7 @@ function validate(req, res, next) {
     columns    = '80',
     cellSize   = '8',
     brightness = '0',
+    density    = 'detailed',  // para modo ascii: original(10), conservative(12), expanded(12), detailed(13), maximum(25)
   } = req.query;
 
   // mode
@@ -54,6 +56,15 @@ function validate(req, res, next) {
     });
   }
 
+  // density: solo aplica para modo ascii (original, conservative, expanded, detailed, maximum)
+  const densityLower = density.toLowerCase();
+  if (!VALID_ASCII_DENSITY.includes(densityLower)) {
+    return res.status(400).json({
+      error:   `Densidad inválida: "${density}"`,
+      valid:   VALID_ASCII_DENSITY,
+    });
+  }
+
   // Normalizar: jpeg → jpg para que renderer.js solo maneje 'jpg'
   req.renderOptions = {
     mode,
@@ -61,6 +72,7 @@ function validate(req, res, next) {
     columns:    cols,
     cellSize:   cell,
     brightness: bright,
+    density:    densityLower,
   };
 
   next();
