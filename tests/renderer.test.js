@@ -804,4 +804,80 @@ describe('Renderer - Tests de integración', () => {
 
   });
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // P-03: Kernel Sharp según modo de renderizado
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('P-03: Kernel Sharp según modo de renderizado', () => {
+
+    // Los kernels se aplican internamente, verificamos que cada modo renderice
+    test('P-03: ASCII debería renderizar con kernel mitchell (mejor bordes)', async () => {
+      // Mitchell preserva mejor los bordes → mejor nitidez para selectChar
+      const result = await renderToBuffer(testImageBuffer, {
+        mode: 'ascii',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('P-03: RGB debería renderizar con kernel nearest (pixel-art)', async () => {
+      // Nearest da efecto pixel-art
+      const result = await renderToBuffer(testImageBuffer, {
+        mode: 'rgb',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('P-03: ANSI debería renderizar con kernel lanczos3 (suavizado)', async () => {
+      // Lanczos3 suaviza para paleta limitada de 8 colores
+      const result = await renderToBuffer(testImageBuffer, {
+        mode: 'ansi',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('P-03: GREY debería renderizar con kernel lanczos3', async () => {
+      const result = await renderToBuffer(testImageBuffer, {
+        mode: 'grey',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('P-03: Modo 256 debería renderizar con kernel lanczos3', async () => {
+      const result = await renderToBuffer(testImageBuffer, {
+        mode: '256',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('P-03: Todos los modos deberían producir imágenes válidas', async () => {
+      const modes = ['ascii', 'rgb', 'ansi', 'grey', '256'];
+
+      for (const mode of modes) {
+        const result = await renderToBuffer(testImageBuffer, {
+          mode: mode,
+          columns: 40
+        });
+
+        expect(result).toBeDefined();
+        expect(isValidImage(result, 'png')).toBe(true);
+      }
+    });
+
+  });
+
 });

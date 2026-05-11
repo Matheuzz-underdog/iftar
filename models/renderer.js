@@ -236,17 +236,23 @@ async function render(imageBuffer, options = {}) {
   const cellW = cellSize;
   const cellH = cellSize * 2; // cada celda cubre 2 filas de píxeles
 
+  // P-03: Kernel Sharp según modo de renderizado.
+  // - ASCII: mitchell (mejor preservación de bordes para selectChar)
+  // - RGB: nearest (efecto pixel-art)
+  // - ANSI/Grey/256: lanczos3 (suavizado para paleta limitada)
+  const KERNEL_BY_MODE = {
+    ascii: 'mitchell',
+    rgb: 'nearest',
+    ansi: 'lanczos3',
+    grey: 'lanczos3',
+    '256': 'lanczos3',
+  };
+  const kernel = KERNEL_BY_MODE[mode] || 'lanczos3';
+
   // Q-01: Pipeline Sharp unificado - una sola llamada con fit: 'inside'.
-  // Antes (FIX BUG-03): dos llamadas a sharp(), la segunda con fit:'fill' que
-  //   deformaba el aspect ratio de la imagen.
-  // Ahora: una sola llamada que usa fit:'inside' para mantener proporciones
-  //   correctas, eliminando el cálculo manual de scaledH.
-  //
-  // El parámetro columns controla el ancho en celdas de carácter.
-  // Sharp calcula automáticamente el height manteniendo el aspect ratio.
   const { data, info } = await sharp(imageBuffer)
     .rotate()  // Aplica orientación EXIF antes de procesar
-    .resize(columns, null, { fit: 'inside', kernel: 'lanczos3' })
+    .resize(columns, null, { fit: 'inside', kernel: kernel })
     .removeAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
