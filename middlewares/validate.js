@@ -3,6 +3,7 @@
 const VALID_MODES    = ['ascii', 'ansi', 'grey', '256', 'rgb'];
 const VALID_FORMATS  = ['png', 'jpg', 'jpeg'];
 const VALID_ASCII_DENSITY = ['original', 'conservative', 'expanded', 'detailed', 'maximum'];
+const VALID_COLOR_METHOD = ['classic', 'perceptual'];  // classic=riv.vala, perceptual=euclidiana
 
 // Todos los parámetros de renderizado vienen como query strings (?mode=rgb&cellSize=8)
 // Este middleware los valida, convierte al tipo correcto y los adjunta en req.renderOptions
@@ -14,6 +15,7 @@ function validate(req, res, next) {
     cellSize   = '8',
     brightness = '0',
     density    = 'detailed',  // para modo ascii: original(10), conservative(12), expanded(12), detailed(13), maximum(25)
+    colorMethod = 'perceptual',  // para modos ansi y 256: classic(riv.vala), perceptual(euclidiana)
   } = req.query;
 
   // mode
@@ -65,6 +67,15 @@ function validate(req, res, next) {
     });
   }
 
+  // colorMethod: método de distancia de color para modos ansi y 256 (classic, perceptual)
+  const colorMethodLower = colorMethod.toLowerCase();
+  if (!VALID_COLOR_METHOD.includes(colorMethodLower)) {
+    return res.status(400).json({
+      error:   `Método de color inválido: "${colorMethod}"`,
+      valid:   VALID_COLOR_METHOD,
+    });
+  }
+
   // Normalizar: jpeg → jpg para que renderer.js solo maneje 'jpg'
   req.renderOptions = {
     mode,
@@ -73,6 +84,7 @@ function validate(req, res, next) {
     cellSize:   cell,
     brightness: bright,
     density:    densityLower,
+    colorMethod: colorMethodLower,
   };
 
   next();

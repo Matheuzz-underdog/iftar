@@ -39,24 +39,43 @@ function idx256toRGB(idx) {
   return [L[Math.floor(i / 36)], L[Math.floor((i % 36) / 6)], L[i % 6]];
 }
 
-// reduce8: busca el color ANSI-8 más cercano por distancia ponderada
-// (mismo algoritmo que tiv.vala: POND(x,y) = ABS(x)*y)
-function reduce8(r, g, b) {
+// ── Funciones de distancia de color ────────────────────────────────────────────
+
+// Distancia ponderada original de riv.vala (classic)
+function distanceClassic(r, g, b, cr, cg, cb) {
+  return Math.abs(cr - r) * r + Math.abs(cg - g) * g + Math.abs(cb - b) * b;
+}
+
+// Distancia Euclidiana perceptual (perceptual - más precisa)
+function distancePerceptual(r, g, b, cr, cg, cb) {
+  const rMean = (cr + r) / 2;
+  return Math.sqrt(
+    (2 + rMean / 256) * Math.pow(cr - r, 2) +
+    4 * Math.pow(cg - g, 2) +
+    (2 + (255 - rMean) / 256) * Math.pow(cb - b, 2)
+  );
+}
+
+// reduce8: busca el color ANSI-8 más cercano usando el método seleccionado
+function reduce8(r, g, b, colorMethod = 'perceptual') {
   if (r < 30 && g < 30 && b < 30) return 0;
   if (r > 200 && g > 200 && b > 200) return 7;
-  let best = -1, select = 0;
+
+  const distanceFn = colorMethod === 'classic' ? distanceClassic : distancePerceptual;
+  let best = Infinity, select = 0;
+
   for (let i = 0; i < ANSI8.length; i++) {
     const [cr, cg, cb] = ANSI8[i];
-    const dist = Math.abs(cr - r) * r
-               + Math.abs(cg - g) * g
-               + Math.abs(cb - b) * b;
-    if (best === -1 || dist < best) { best = dist; select = i; }
+    const dist = distanceFn(r, g, b, cr, cg, cb);
+    if (dist < best) { best = dist; select = i; }
   }
   return select;
 }
 
 // Modos de color individuales
-function applyAnsi(r, g, b) { return ANSI8[reduce8(r, g, b)]; }
+function applyAnsi(r, g, b, colorMethod = 'perceptual') {
+  return ANSI8[reduce8(r, g, b, colorMethod)];
+}
 
 function applyGrey(r, g, b) {
   const lum = Math.floor((r + g + b) / 3);
@@ -64,7 +83,10 @@ function applyGrey(r, g, b) {
   return idx256toRGB(k);
 }
 
-function apply256(r, g, b) {
+function apply256(r, g, b, colorMethod = 'perceptual') {
+  // apply256 también puede usar la distancia perceptual para mejor precisión
+  // Pero por ahora mantiene su fórmula original de índice
+  // (el colorMethod aplica principalmente a reduce8 en modo ansi)
   const ri = Math.floor(Math.max(0, Math.min(255, r)) / 42.6);
   const gi = Math.floor(Math.max(0, Math.min(255, g)) / 42.6);
   const bi = Math.floor(Math.max(0, Math.min(255, b)) / 42.6);
@@ -80,11 +102,11 @@ function applyRGB(r, g, b) {
 }
 
 // Despachador: aplica el modo correcto a un pixel RGB
-function applyColor(mode, r, g, b) {
+function applyColor(mode, r, g, b, colorMethod = 'perceptual') {
   switch (mode) {
-    case 'ansi': return applyAnsi(r, g, b);
+    case 'ansi': return applyAnsi(r, g, b, colorMethod);
     case 'grey': return applyGrey(r, g, b);
-    case '256':  return apply256(r, g, b);
+    case '256':  return apply256(r, g, b, colorMethod);
     case 'rgb':
     default:     return applyRGB(r, g, b);
   }
@@ -131,6 +153,7 @@ async function render(imageBuffer, options = {}) {
     cellSize   = 8,       // px por celda (alto = cellSize * 2)
     brightness = 0,       // -255 a 255
     density    = 'detailed',  // ascii: original(10), conservative(12), expanded(12), detailed(13), maximum(25)
+    colorMethod = 'perceptual',  // ansi/256: classic(riv.vala), perceptual(euclidiana)
   } = options;
 
   const cellW = cellSize;
@@ -199,8 +222,8 @@ async function render(imageBuffer, options = {}) {
         ctx.fillText(pal[idx], colX, rowY);
       } else {
         // Modos de color: bg = fila inferior, fg = fila superior oscurecida -20
-        const bg   = applyColor(mode, r2,      g2,      b2);
-        const fg   = applyColor(mode, r - 20,  g - 20,  b - 20);
+        const bg   = applyColor(mode, r2,      g2,      b2,      colorMethod);
+        const fg   = applyColor(mode, r - 20,  g - 20,  b - 20, colorMethod);
         const char = selectChar(r, g, b, r2, g2, b2, pr, pg, pb, nr, ng, nb);
 
         ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;

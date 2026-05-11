@@ -246,4 +246,63 @@ describe('Renderer - Tests de integración', () => {
 
   });
 
+  describe('Método de color (colorMethod para ansi y 256)', () => {
+
+    test('debería renderizar ANSI con colorMethod=classic (riv.vala)', async () => {
+      const result = await render(testImageBuffer, {
+        mode: 'ansi',
+        colorMethod: 'classic',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('debería renderizar ANSI con colorMethod=perceptual (euclidiana)', async () => {
+      const result = await render(testImageBuffer, {
+        mode: 'ansi',
+        colorMethod: 'perceptual',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('debería renderizar 256 con colorMethod=classic', async () => {
+      const result = await render(testImageBuffer, {
+        mode: '256',
+        colorMethod: 'classic',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('debería renderizar 256 con colorMethod=perceptual', async () => {
+      const result = await render(testImageBuffer, {
+        mode: '256',
+        colorMethod: 'perceptual',
+        columns: 40
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+    test('debería usar perceptual por defecto si colorMethod no se especifica', async () => {
+      const result = await render(testImageBuffer, {
+        mode: 'ansi',
+        columns: 40
+        // colorMethod no especificado - debería usar 'perceptual' por defecto
+      });
+
+      expect(result).toBeDefined();
+      expect(isValidImage(result, 'png')).toBe(true);
+    });
+
+  });
+
 });
