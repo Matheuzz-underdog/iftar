@@ -281,7 +281,9 @@ async function render(imageBuffer, options = {}) {
 
   ctx.fillStyle    = '#000000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font         = `bold ${cellH}px monospace`;
+  // N-01: Fallback específico para consistencia cross-platform
+  // Consolas (Windows) -> Courier New (macOS/Linux) -> monospace (último recurso)
+  ctx.font         = `bold ${cellH}px Consolas, 'Courier New', monospace`;
   ctx.textBaseline = 'top';
 
   // Helper: devuelve el pixel (x,y) con brightness + error acumulado aplicados.
