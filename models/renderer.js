@@ -49,7 +49,7 @@ function distanceClassic(r, g, b, cr, cg, cb) {
   return Math.abs(cr - r) * r + Math.abs(cg - g) * g + Math.abs(cb - b) * b;
 }
 
-// Distancia Euclidiana perceptual — más precisa para la percepción humana
+// Distancia Euclidiana perceptual — más precisa para la percepción human
 function distancePerceptual(r, g, b, cr, cg, cb) {
   const rMean = (cr + r) / 2;
   return Math.sqrt(
