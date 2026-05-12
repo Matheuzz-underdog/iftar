@@ -3,10 +3,35 @@
 const multer = require('multer');
 const axios  = require('axios');
 
-// Multer en memoria: no toca el disco, el archivo vive como Buffer en req.file.buffer
+const MAGIC_BYTES = {
+  'image/png':  [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+  'image/gif':  [[0x47, 0x49, 0x46, 0x38]],
+  'image/webp': [[0x52, 0x49, 0x46, 0x46, null, null, null, null, 0x57, 0x45, 0x42, 0x50]],
+  'image/bmp':  [[0x42, 0x4D]],
+};
+
+function checkMagicBytes(buffer, mimetype) {
+  const signatures = MAGIC_BYTES[mimetype];
+  if (!signatures) return false;
+
+  for (const sig of signatures) {
+    let match = true;
+    for (let i = 0; i < sig.length; i++) {
+      if (sig[i] === null) continue;
+      if (buffer[i] !== sig[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return true;
+  }
+  return false;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB máximo
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter(req, file, cb) {
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
     allowed.includes(file.mimetype)
@@ -15,8 +40,6 @@ const upload = multer({
   },
 });
 
-// Middleware para archivo: espera campo "image" en multipart/form-data
-// Normaliza a req.imageBuffer para que el controlador no sepa la diferencia
 function uploadFile(req, res, next) {
   upload.single('image')(req, res, (err) => {
     if (err) {
@@ -27,12 +50,18 @@ function uploadFile(req, res, next) {
         error: 'No se recibió ningún archivo. Campo multipart esperado: "image"',
       });
     }
+
+    if (!checkMagicBytes(req.file.buffer, req.file.mimetype)) {
+      return res.status(400).json({
+        error: 'El archivo no corresponde a una imagen válida. Verificá que no esté corrupto.',
+      });
+    }
+
     req.imageBuffer = req.file.buffer;
     next();
   });
 }
 
-// Middleware para URL: descarga la imagen con axios y normaliza a req.imageBuffer
 async function uploadUrl(req, res, next) {
   const { url } = req.body;
 
@@ -57,16 +86,22 @@ async function uploadUrl(req, res, next) {
       });
     }
 
-    req.imageBuffer = Buffer.from(response.data);
+    const buffer = Buffer.from(response.data);
+
+    if (!checkMagicBytes(buffer, contentType)) {
+      return res.status(400).json({
+        error: 'El contenido descargado no corresponde a una imagen válida.',
+      });
+    }
+
+    req.imageBuffer = buffer;
     next();
   } catch (err) {
-    // Error HTTP de la URL remota
     if (err.response) {
       return res.status(400).json({
         error: `No se pudo descargar la imagen: HTTP ${err.response.status}`,
       });
     }
-    // Timeout, DNS, conexión rechazada, etc.
     return res.status(400).json({
       error: `Error al descargar la imagen: ${err.message}`,
     });

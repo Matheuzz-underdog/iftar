@@ -1,9 +1,15 @@
-var express = require('express');
-var router = express.Router();
+'use strict';
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
+const asciiRouter = require('./ascii');
+const ansiRouter  = require('./ansi');
+const greyRouter  = require('./grey');
+const rgb256Router = require('./256');
+const rgbRouter  = require('./rgb');
 
-module.exports = router;
+module.exports = {
+  asciiRouter,
+  ansiRouter,
+  greyRouter,
+  rgb256Router,
+  rgbRouter,
+};
