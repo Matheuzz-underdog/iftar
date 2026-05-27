@@ -1,13 +1,6 @@
 'use strict';
 
-function toLinear(v) {
-  const s = v / 255;
-  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-}
-
-function toGamma(v) {
-  return v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
-}
+const { toLinear, toGamma } = require('./luminance');
 
 function rgbToXyz(r, g, b) {
   const rLin = toLinear(r);
@@ -180,7 +173,10 @@ function deltaECMC(Lab1, Lab2, l = 1, c = 1) {
 }
 
 function distanceClassic(r, g, b, cr, cg, cb) {
-  return Math.abs(cr - r) * r + Math.abs(cg - g) * g + Math.abs(cb - b) * b;
+  const dr = cr - r;
+  const dg = cg - g;
+  const db = cb - b;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
 }
 
 function distancePerceptual(r, g, b, cr, cg, cb) {
@@ -209,6 +205,4 @@ module.exports = {
   deltaECMC,
   rgbToLab,
   rgbToXyz,
-  toLinear,
-  toGamma,
 };

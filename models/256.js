@@ -3,7 +3,15 @@
 const { PALETTE_256 } = require('../utils/ansiUtils');
 const { distanceClassic, distancePerceptual, distanceLab, distanceCMC } = require('../utils/colorDistance');
 
+const CACHE_MAX = 8000;
 const _cache256 = new Map();
+
+function cacheSet(key, val) {
+  if (_cache256.size >= CACHE_MAX) {
+    _cache256.delete(_cache256.keys().next().value);
+  }
+  _cache256.set(key, val);
+}
 
 function apply256(r, g, b, colorMethod = 'perceptual') {
   const key = `${r >> 2},${g >> 2},${b >> 2},${colorMethod}`;
@@ -21,7 +29,7 @@ function apply256(r, g, b, colorMethod = 'perceptual') {
     if (d < best) { best = d; bestIdx = i; }
   }
   const result = PALETTE_256[bestIdx];
-  _cache256.set(key, result);
+  cacheSet(key, result);
   return result;
 }
 

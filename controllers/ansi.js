@@ -9,7 +9,7 @@ async function renderAnsi(req, res, next) {
     res.set('Content-Type', format === 'jpg' ? 'image/jpeg' : 'image/png');
     res.set('Content-Disposition', `inline; filename="ansi.${format}"`);
 
-    const stream = format === 'jpg' || format === 'jpeg'
+    const stream = format === 'jpg'
       ? canvas.createJPEGStream({ quality: 0.92 })
       : canvas.createPNGStream();
 
@@ -28,7 +28,8 @@ async function renderAnsi(req, res, next) {
     const isImageError =
       err.message.includes('unsupported image format') ||
       err.message.includes('Input buffer') ||
-      err.message.includes('bad image');
+      err.message.includes('bad image') ||
+      err.message.includes('excede');
 
     if (isImageError) {
       return res.status(400).json({

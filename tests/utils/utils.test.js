@@ -91,12 +91,17 @@ describe('colorDistance', () => {
     expect(d).toBe(0);
   });
 
-  test('color igual pero channels cambiados da distinta distancia en classic', () => {
+  test('canales distintos con mismo módulo dan igual distancia en classic', () => {
     const d1 = distanceClassic(100, 0, 0, 0, 0, 0);
     const d2 = distanceClassic(0, 100, 0, 0, 0, 0);
-    expect(d1).toBe(10000);
-    expect(d2).toBe(10000);
+    expect(d1).toBe(100);
+    expect(d2).toBe(100);
     expect(d1).toBe(d2);
+  });
+
+  test('negro no devuelve 0 para cualquier color en classic', () => {
+    const d = distanceClassic(0, 0, 0, 255, 128, 64);
+    expect(d).toBeGreaterThan(0);
   });
 });
 

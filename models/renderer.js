@@ -123,13 +123,6 @@ async function render(imageBuffer, options = {}) {
         const lum = Math.round(lumFn(r, g, b));
         const idx = Math.min(Math.floor(lum / (255 / pal.length)), pal.length - 1);
 
-        if (propagateError) {
-          const quantizedLum = Math.round((idx / (pal.length - 1)) * 255);
-          const err = lum - quantizedLum;
-          propagateError(errorBuffer, w, h, x, y,
-            err * 0.299, err * 0.587, err * 0.114);
-        }
-
         ctx.fillStyle = '#000000';
         ctx.fillRect(colX, rowY, cellW, cellH);
         ctx.fillStyle = '#ffffff';

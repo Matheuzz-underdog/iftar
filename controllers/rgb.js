@@ -9,7 +9,7 @@ async function renderRgb(req, res, next) {
     res.set('Content-Type', format === 'jpg' ? 'image/jpeg' : 'image/png');
     res.set('Content-Disposition', `inline; filename="rgb.${format}"`);
 
-    const stream = format === 'jpg' || format === 'jpeg'
+    const stream = format === 'jpg'
       ? canvas.createJPEGStream({ quality: 0.92 })
       : canvas.createPNGStream();
 

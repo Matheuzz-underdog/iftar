@@ -1,5 +1,6 @@
 'use strict';
 
+const { URL } = require('url');
 const multer = require('multer');
 const axios  = require('axios');
 
@@ -27,6 +28,17 @@ function checkMagicBytes(buffer, mimetype) {
     if (match) return true;
   }
   return false;
+}
+
+function isSafeUrl(raw) {
+  try {
+    const u = new URL(raw);
+    if (!['http:', 'https:'].includes(u.protocol)) return false;
+    const h = u.hostname;
+    if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return false;
+    if (h === '169.254.169.254') return false;
+    return true;
+  } catch { return false; }
 }
 
 const upload = multer({
@@ -67,6 +79,10 @@ async function uploadUrl(req, res, next) {
 
   if (!url) {
     return res.status(400).json({ error: 'El campo "url" es requerido en el body JSON' });
+  }
+
+  if (!isSafeUrl(url)) {
+    return res.status(400).json({ error: 'URL no permitida' });
   }
 
   try {

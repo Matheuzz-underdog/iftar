@@ -5,17 +5,11 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-var fs = require('fs');
 var rateLimit = require('express-rate-limit');
 
 var { asciiRouter, ansiRouter, greyRouter, rgb256Router, rgbRouter } = require('./routes/index');
 
 var app = express();
-
-var tempDir = path.join(__dirname, 'public', 'temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
-}
 
 app.use(logger('dev'));
 app.use(express.json({ limit: '2mb' }));
