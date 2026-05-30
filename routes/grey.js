@@ -3,11 +3,9 @@
 const express = require('express');
 const router  = express.Router();
 
-const { uploadFile, uploadUrl } = require('../middlewares/upload');
-const { validateGrey } = require('../middlewares/validateGrey');
+const { uploadFile } = require('../middlewares/upload');
 const { renderGrey } = require('../controllers/grey');
 
-router.post('/render',      uploadFile, validateGrey, renderGrey);
-router.post('/render/url', uploadUrl,  validateGrey, renderGrey);
+router.post('/render', uploadFile, renderGrey);
 
 module.exports = router;

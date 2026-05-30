@@ -11,19 +11,14 @@ const { renderGrey }  = require('../../controllers/grey');
 const { render256 }  = require('../../controllers/256');
 const { renderRgb }  = require('../../controllers/rgb');
 
-function mockReq(buffer) {
+function mockReq(buffer, query) {
   return {
     imageBuffer: buffer || Buffer.from('fake'),
-    renderOptions: {
-      mode: 'ascii', format: 'png', columns: 80, cellSize: 8,
-      brightness: 0, autocontrast: false, density: 'original',
-      luminance: 'bt709', dithering: 'none',
-    },
+    query: query || {},
   };
 }
 
 function mockRes() {
-  const chunks = [];
   const headers = {};
   const res = {
     statusCode: 200,
@@ -32,18 +27,13 @@ function mockRes() {
     json: jest.fn(),
     end: jest.fn(),
     get headers() { return headers; },
-    write: jest.fn((chunk) => { chunks.push(chunk); }),
-    on: jest.fn((event, cb) => {
-      if (event === 'error') res._emitError = cb;
-    }),
-    pipe: jest.fn(function(target) {
-      const stream = {
-        on: jest.fn((e, cb) => { if (e === 'error') stream._err = cb; return stream; }),
-        write: jest.fn(),
-        end: jest.fn(),
-      };
-      return stream;
-    }),
+    write: jest.fn(),
+    on: jest.fn(),
+    pipe: jest.fn(() => ({
+      on: jest.fn(),
+      write: jest.fn(),
+      end: jest.fn(),
+    })),
   };
   return res;
 }
@@ -52,133 +42,405 @@ function mockNext() {
   return jest.fn();
 }
 
-describe('controllers', () => {
+function mockCanvas() {
+  const stream = { on: jest.fn(), pipe: jest.fn() };
+  return {
+    createPNGStream: () => stream,
+    createJPEGStream: () => stream,
+  };
+}
+
+describe('renderAscii', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  describe('renderAscii', () => {
-    test('setea Content-Type PNG y Content-Disposition', async () => {
-      const mockStream = {
-        on: jest.fn(),
-        pipe: jest.fn(),
-      };
-      const mockCanvas = {
-        createPNGStream: () => mockStream,
-        createJPEGStream: () => mockStream,
-      };
-      render.mockResolvedValue({ canvas: mockCanvas, format: 'png' });
+  test('setea Content-Type PNG y Content-Disposition', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
 
-      const req = mockReq();
-      const res = mockRes();
-      const next = mockNext();
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
 
-      await renderAscii(req, res, next);
+    await renderAscii(req, res, next);
 
-      expect(res.headers['Content-Type']).toBe('image/png');
-      expect(res.headers['Content-Disposition']).toContain('ascii.png');
-      expect(next).not.toHaveBeenCalled();
-    });
+    expect(res.headers['Content-Type']).toBe('image/png');
+    expect(res.headers['Content-Disposition']).toContain('ascii.png');
+    expect(next).not.toHaveBeenCalled();
+  });
 
-    test('setea Content-Type JPEG cuando format es jpg', async () => {
-      const mockStream = { on: jest.fn(), pipe: jest.fn() };
-      const mockCanvas = { createPNGStream: () => mockStream, createJPEGStream: () => mockStream };
-      render.mockResolvedValue({ canvas: mockCanvas, format: 'jpg' });
+  test('setea Content-Type JPEG cuando format es jpg', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'jpg' });
 
-      const req = mockReq();
-      req.renderOptions.format = 'jpg';
-      const res = mockRes();
+    const req = mockReq(Buffer.from('fake'), { format: 'jpg' });
+    const res = mockRes();
 
-      await renderAscii(req, res, mockNext());
+    await renderAscii(req, res, mockNext());
 
-      expect(res.headers['Content-Type']).toBe('image/jpeg');
-    });
+    expect(res.headers['Content-Type']).toBe('image/jpeg');
+  });
 
-    test('llama a next en error inesperado', async () => {
-      render.mockRejectedValue(new Error('Unexpected'));
+  test('llama a next en error inesperado', async () => {
+    render.mockRejectedValue(new Error('Unexpected'));
 
-      const req = mockReq();
-      const res = mockRes();
-      const next = mockNext();
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
 
-      await renderAscii(req, res, next);
+    await renderAscii(req, res, next);
 
-      expect(next).toHaveBeenCalled();
-    });
+    expect(next).toHaveBeenCalled();
+  });
 
-    test('retorna 400 en error de imagen corrupta', async () => {
-      render.mockRejectedValue(new Error('Input buffer corrupted'));
+  test('retorna 400 en error de imagen corrupta', async () => {
+    render.mockRejectedValue(new Error('Input buffer corrupted'));
 
-      const req = mockReq();
-      const res = mockRes();
-      const next = mockNext();
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
 
-      await renderAscii(req, res, next);
+    await renderAscii(req, res, next);
 
-      expect(res.statusCode).toBe(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.any(String) }));
+    expect(res.statusCode).toBe(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.any(String) }));
+  });
+
+  test('valores default llaman a render con opciones correctas', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAscii(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), {
+      mode: 'ascii', format: 'png', columns: 80, cellSize: 8,
+      brightness: 0, autocontrast: false, density: 'detailed',
+      luminance: 'bt709', dithering: 'none',
     });
   });
 
-  describe('renderAnsi', () => {
-    test('funciona con defaults', async () => {
-      const mockStream = { on: jest.fn(), pipe: jest.fn() };
-      const mockCanvas = { createPNGStream: () => mockStream, createJPEGStream: () => mockStream };
-      render.mockResolvedValue({ canvas: mockCanvas, format: 'png' });
+  test('parametros personalizados funcionan', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'jpg' });
 
-      const req = mockReq();
-      req.renderOptions.mode = 'ansi';
-      const res = mockRes();
+    const req = mockReq(Buffer.from('fake'), {
+      columns: '120', cellSize: '16', brightness: '-50', format: 'jpg',
+      autocontrast: 'true', density: 'detailed', luminance: 'gamma',
+    });
+    const res = mockRes();
+    const next = mockNext();
 
-      await renderAnsi(req, res, mockNext());
+    await renderAscii(req, res, next);
 
-      expect(res.headers['Content-Disposition']).toContain('ansi.png');
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), {
+      mode: 'ascii', format: 'jpg', columns: 120, cellSize: 16,
+      brightness: -50, autocontrast: true, density: 'detailed',
+      luminance: 'gamma', dithering: 'none',
     });
   });
 
-  describe('renderGrey', () => {
-    test('funciona con defaults', async () => {
-      const mockStream = { on: jest.fn(), pipe: jest.fn() };
-      const mockCanvas = { createPNGStream: () => mockStream, createJPEGStream: () => mockStream };
-      render.mockResolvedValue({ canvas: mockCanvas, format: 'png' });
+  test('jpeg se normaliza a jpg', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'jpg' });
 
-      const req = mockReq();
-      req.renderOptions.mode = 'grey';
-      const res = mockRes();
+    const req = mockReq(Buffer.from('fake'), { format: 'jpeg' });
+    const res = mockRes();
+    const next = mockNext();
 
-      await renderGrey(req, res, mockNext());
+    await renderAscii(req, res, next);
 
-      expect(res.headers['Content-Disposition']).toContain('grey.png');
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ format: 'jpg' }));
+  });
+
+  test('columns fuera de rango retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { columns: '5' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAscii(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('density invalido retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { density: 'super' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAscii(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('luminance invalido retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { luminance: 'linear' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAscii(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('format invalido retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { format: 'webp' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAscii(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('autocontrast invalido retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { autocontrast: 'yes' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAscii(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('renderAnsi', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('funciona con defaults', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    req.renderOptions = { mode: 'ansi' };
+    const res = mockRes();
+
+    await renderAnsi(req, res, mockNext());
+
+    expect(res.headers['Content-Disposition']).toContain('ansi.png');
+  });
+
+  test('valores default llaman a render con opciones correctas', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAnsi(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), {
+      mode: 'ansi', format: 'png', columns: 80, cellSize: 8,
+      brightness: 0, autocontrast: false, colorMethod: 'perceptual',
+      dithering: 'none',
     });
   });
 
-  describe('render256', () => {
-    test('funciona con defaults', async () => {
-      const mockStream = { on: jest.fn(), pipe: jest.fn() };
-      const mockCanvas = { createPNGStream: () => mockStream, createJPEGStream: () => mockStream };
-      render.mockResolvedValue({ canvas: mockCanvas, format: 'png' });
+  test('colorMethod classic funciona', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
 
-      const req = mockReq();
-      req.renderOptions.mode = '256';
-      const res = mockRes();
+    const req = mockReq(Buffer.from('fake'), { colorMethod: 'classic' });
+    const res = mockRes();
+    const next = mockNext();
 
-      await render256(req, res, mockNext());
+    await renderAnsi(req, res, next);
 
-      expect(res.headers['Content-Disposition']).toContain('256.png');
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ colorMethod: 'classic' }));
+  });
+
+  test('dithering floyd-steinberg funciona', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq(Buffer.from('fake'), { dithering: 'floyd-steinberg' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAnsi(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ dithering: 'floyd-steinberg' }));
+  });
+
+  test('colorMethod invalido retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { colorMethod: 'euclidean' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAnsi(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('dithering invalido retorna 400', async () => {
+    const req = mockReq(Buffer.from('fake'), { dithering: 'half' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderAnsi(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('renderGrey', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('funciona con defaults', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    req.renderOptions = { mode: 'grey' };
+    const res = mockRes();
+
+    await renderGrey(req, res, mockNext());
+
+    expect(res.headers['Content-Disposition']).toContain('grey.png');
+  });
+
+  test('valores default llaman a render con opciones correctas', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderGrey(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), {
+      mode: 'grey', format: 'png', columns: 80, cellSize: 8,
+      brightness: 0, autocontrast: false, dithering: 'none',
     });
   });
 
-  describe('renderRgb', () => {
-    test('funciona con defaults', async () => {
-      const mockStream = { on: jest.fn(), pipe: jest.fn() };
-      const mockCanvas = { createPNGStream: () => mockStream, createJPEGStream: () => mockStream };
-      render.mockResolvedValue({ canvas: mockCanvas, format: 'png' });
+  test('dithering atkinson funciona', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
 
-      const req = mockReq();
-      req.renderOptions.mode = 'rgb';
-      const res = mockRes();
+    const req = mockReq(Buffer.from('fake'), { dithering: 'atkinson' });
+    const res = mockRes();
+    const next = mockNext();
 
-      await renderRgb(req, res, mockNext());
+    await renderGrey(req, res, next);
 
-      expect(res.headers['Content-Disposition']).toContain('rgb.png');
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ dithering: 'atkinson' }));
+  });
+});
+
+describe('render256', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('funciona con defaults', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    req.renderOptions = { mode: '256' };
+    const res = mockRes();
+
+    await render256(req, res, mockNext());
+
+    expect(res.headers['Content-Disposition']).toContain('256.png');
+  });
+
+  test('valores default llaman a render con opciones correctas', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
+
+    await render256(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), {
+      mode: '256', format: 'png', columns: 80, cellSize: 8,
+      brightness: 0, autocontrast: false, colorMethod: 'perceptual',
+      dithering: 'none',
     });
+  });
+
+  test('colorMethod classic funciona', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq(Buffer.from('fake'), { colorMethod: 'classic' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await render256(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ colorMethod: 'classic' }));
+  });
+
+  test('dithering ordered funciona', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq(Buffer.from('fake'), { dithering: 'ordered' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await render256(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ dithering: 'ordered' }));
+  });
+});
+
+describe('renderRgb', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('funciona con defaults', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    req.renderOptions = { mode: 'rgb' };
+    const res = mockRes();
+
+    await renderRgb(req, res, mockNext());
+
+    expect(res.headers['Content-Disposition']).toContain('rgb.png');
+  });
+
+  test('valores default llaman a render con opciones correctas', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq();
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderRgb(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), {
+      mode: 'rgb', format: 'png', columns: 80, cellSize: 8,
+      brightness: 0, autocontrast: false, dithering: 'none',
+    });
+  });
+
+  test('dithering floyd-steinberg funciona', async () => {
+    const canvas = mockCanvas();
+    render.mockResolvedValue({ canvas, format: 'png' });
+
+    const req = mockReq(Buffer.from('fake'), { dithering: 'floyd-steinberg' });
+    const res = mockRes();
+    const next = mockNext();
+
+    await renderRgb(req, res, next);
+
+    expect(render).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ dithering: 'floyd-steinberg' }));
   });
 });

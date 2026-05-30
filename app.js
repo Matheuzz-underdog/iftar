@@ -7,7 +7,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var rateLimit = require('express-rate-limit');
 
-var { asciiRouter, ansiRouter, greyRouter, rgb256Router, rgbRouter } = require('./routes/index');
+var { asciiRouter, ansiRouter, greyRouter, rgb256Router, rgbRouter, urlRouter } = require('./routes/index');
 
 var app = express();
 
@@ -37,6 +37,7 @@ app.use('/api/image/ansi',  ansiRouter);
 app.use('/api/image/grey',  greyRouter);
 app.use('/api/image/256',   rgb256Router);
 app.use('/api/image/rgb',   rgbRouter);
+app.use('/api/image',       urlRouter);
 
 app.use(function(req, res, next) {
   next(createError(404));

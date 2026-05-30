@@ -238,6 +238,46 @@ describe('Integration: RGB mode', () => {
   });
 });
 
+describe('Formato PNG / JPG en todos los modos', () => {
+  let imageBuffer;
+
+  beforeAll(async () => {
+    imageBuffer = await createTestImagePng();
+  });
+
+  const modes = [
+    { name: 'ascii',  path: '/api/image/ascii/render', query: { columns: 30, density: 'original' } },
+    { name: 'ansi',   path: '/api/image/ansi/render',  query: { columns: 30 } },
+    { name: 'grey',   path: '/api/image/grey/render',  query: { columns: 30 } },
+    { name: '256',    path: '/api/image/256/render',   query: { columns: 30 } },
+    { name: 'rgb',    path: '/api/image/rgb/render',   query: { columns: 30 } },
+  ];
+
+  modes.forEach(({ name, path, query }) => {
+    test(`${name} formato PNG`, async () => {
+      const res = await request(refactorApp)
+        .post(path)
+        .attach('image', imageBuffer, { filename: 'test.png', contentType: 'image/png' })
+        .query({ ...query, format: 'png' });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/image\/png/);
+      expect(isPng(res.body)).toBe(true);
+    });
+
+    test(`${name} formato JPG`, async () => {
+      const res = await request(refactorApp)
+        .post(path)
+        .attach('image', imageBuffer, { filename: 'test.png', contentType: 'image/png' })
+        .query({ ...query, format: 'jpg' });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/image\/jpeg/);
+      expect(isJpeg(res.body)).toBe(true);
+    });
+  });
+});
+
 describe('Seguridad: MAX_PIXELS guard', () => {
   test('imagen muy grande retorna error', async () => {
     const img = await sharp(Buffer.alloc(5000 * 5000 * 3), {
@@ -252,7 +292,7 @@ describe('Seguridad: MAX_PIXELS guard', () => {
       .query({ columns: 40 });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain('excede');
+    expect(res.body.detail).toContain('excede');
   });
 });
 

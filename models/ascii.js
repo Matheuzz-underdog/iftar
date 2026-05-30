@@ -3,9 +3,8 @@
 const ASCII_PALETTES = {
   original:     ' `.-:+*%$#',
   conservative: " .'-:;+=*%$#@",
-  expanded:     '$@B%8&WM#*o;:,. ',
-  detailed:     ' .,-:;+*%#@$',
-  maximum:      '$@B%8&WM#*o;:,. -+=<>/|(){}[]?',
+  expanded:     ' .,:;o*#MW&8%B@$',
+  detailed:     ' .,-:;+*%#@$'
 };
 
 function selectChar(r, g, b, r2, g2, b2, pr, pg, pb, nr, ng, nb) {

@@ -2,7 +2,7 @@
 
 const VALID_MODES    = ['ascii', 'ansi', 'grey', '256', 'rgb'];
 const VALID_FORMATS  = ['png', 'jpg', 'jpeg'];
-const VALID_ASCII_DENSITY = ['original', 'conservative', 'expanded', 'detailed', 'maximum'];
+const VALID_ASCII_DENSITY = ['original', 'conservative', 'expanded', 'detailed'];
 const VALID_COLOR_METHOD = ['classic', 'perceptual', 'lab', 'cmc'];
 const VALID_DITHERING = ['none', 'floyd-steinberg', 'atkinson', 'ordered'];
 const VALID_LUMINANCE = ['bt709', 'ntsc', 'gamma'];

@@ -32,8 +32,8 @@ describe('models/ascii', () => {
       expect(ASCII_PALETTES.detailed).toHaveLength(12);
     });
 
-    test('maximum tiene 30 chars', () => {
-      expect(ASCII_PALETTES.maximum).toHaveLength(30);
+    test('expanded empieza con espacio (claro para zonas oscuras)', () => {
+      expect(ASCII_PALETTES.expanded[0]).toBe(' ');
     });
   });
 
