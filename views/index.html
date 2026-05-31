@@ -2,37 +2,96 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>TIV-API Test Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IFTAR</title>
+  <meta name="description" content="IFTAR: convertí tus imágenes a arte de terminal con 5 modos de renderizado: ASCII, ANSI, GREY, 256 y RGB.">
 </head>
 <body>
-  <h1>TIV-API Test Tool</h1>
+  <header>
+    <nav aria-label="Navegación principal">
+      <a href="/" aria-current="page">IFTAR</a>
+      <a href="/about">Acerca</a>
+      <a href="https://github.com/Matheuzz-underdog/iftar" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </nav>
+  </header>
 
-  <div>
-    <label>Modo:</label>
-    <select id="modeSelector">
-      <option value="ascii">ASCII</option>
-      <option value="ansi">ANSI</option>
-      <option value="grey">GREY</option>
-      <option value="256">256</option>
-      <option value="rgb">RGB</option>
-    </select>
-  </div>
+  <main>
+    <section aria-labelledby="hero-title">
+      <h1 id="hero-title">IFTAR</h1>
+      <p><strong>I</strong>mage <strong>F</strong>orge <strong>T</strong>o <strong>A</strong>rt <strong>R</strong>etro — Convertí tus imágenes en arte de terminal al instante</p>
+      <p>Subí una foto o imagen y transformala al instante en 5 estilos distintos: ASCII, ANSI, escala de grises, 256 colores o RGB. Inspirado en <a href="https://github.com/radare/tiv" target="_blank" rel="noopener noreferrer">radare/tiv</a>.</p>
+    </section>
 
-  <div id="optionsContainer"></div>
+    <section aria-labelledby="tool-title">
+      <h2 id="tool-title">Probá el convertidor</h2>
+      <p>Seleccioná un modo, ajustá los parámetros y subí una imagen para ver el resultado.</p>
 
-  <hr>
+      <div>
+        <label for="modeSelector">Modo de renderizado:</label>
+        <select id="modeSelector">
+          <option value="ascii">ASCII</option>
+          <option value="ansi">ANSI</option>
+          <option value="grey">GREY</option>
+          <option value="256">256</option>
+          <option value="rgb">RGB</option>
+        </select>
+      </div>
 
-  <div>
-    <h3>Por Archivo</h3>
-    <input type="file" id="fileInput" accept=".png,.jpg,.jpeg">
-    <button id="processBtn">Subir y Procesar</button>
-    <div id="filePreviewContainer" style="margin-top: 10px; display: none;">
-      <img id="filePreview" style="max-width: 400px; max-height: 400px; border: 1px solid #000;">
-      <br>
-      <a id="fileDownload" href="#" download>Descargar</a>
-    </div>
-    <div id="fileError" style="color: red; display: none;"></div>
-  </div>
+      <div id="optionsContainer"></div>
+
+      <div>
+        <label for="fileInput">Imagen a convertir:</label>
+        <input type="file" id="fileInput" accept=".png,.jpg,.jpeg">
+        <button type="button" id="processBtn">Subir y Procesar</button>
+      </div>
+
+      <div id="filePreviewContainer">
+        <figure>
+          <img id="filePreview" src="" alt="Vista previa de la imagen convertida" width="400">
+          <figcaption>
+            <a id="fileDownload" href="#" download>Descargar imagen convertida</a>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div id="fileError" role="alert"></div>
+    </section>
+
+    <section aria-labelledby="modes-title">
+      <h2 id="modes-title">Modos disponibles</h2>
+      <p>Cada modo ofrece un estilo visual distinto. Estos son los resultados que podés obtener:</p>
+
+      <article>
+        <h3>ASCII</h3>
+        <img src="/images/ascii-producto.png" alt="Resultado de la conversión a ASCII" width="400" loading="lazy" decoding="async">
+      </article>
+
+      <article>
+        <h3>ANSI</h3>
+        <img src="/images/ansi-producto.png" alt="Resultado de la conversión a ANSI" width="400" loading="lazy" decoding="async">
+      </article>
+
+      <article>
+        <h3>Grey</h3>
+        <img src="/images/grey-producto.png" alt="Resultado de la conversión a escala de grises" width="400" loading="lazy" decoding="async">
+      </article>
+
+      <article>
+        <h3>256</h3>
+        <img src="/images/256-producto.png" alt="Resultado de la conversión a 256 colores" width="400" loading="lazy" decoding="async">
+      </article>
+
+      <article>
+        <h3>RGB</h3>
+        <img src="/images/rgb-producto.png" alt="Resultado de la conversión a RGB" width="400" loading="lazy" decoding="async">
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    <h5>Proyecto derivado de <a href="https://github.com/radare/tiv" target="_blank" rel="noopener noreferrer">radare/tiv</a> — Terminal Image Viewer</h5>
+    <h6>Desarrollado por <a href="https://github.com/Matheuzz-underdog/iftar" target="_blank" rel="noopener noreferrer">Sergio Cuevas</a></h6>
+  </footer>
 
   <script type="module" src="/javascripts/main.js"></script>
 </body>

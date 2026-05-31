@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IFTAR — Cómo funciona</title>
+  <meta name="description" content="Descubrí cómo funciona IFTAR: pipeline de procesamiento, lógica de cada modo de renderizado y las fórmulas matemáticas detrás de la conversión de imágenes a arte de terminal.">
+</head>
+<body>
+  <header>
+    <nav aria-label="Navegación principal">
+      <a href="/">IFTAR</a>
+      <a href="/about" aria-current="page">Acerca</a>
+      <a href="https://github.com/Matheuzz-underdog/iftar" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section aria-labelledby="about-hero-title">
+      <h1 id="about-hero-title">¿Qué es IFTAR?</h1>
+      <p><strong>IFTAR</strong> (<em>Image Forge To Art Retro</em>) es una API web que transforma imágenes comunes (JPG, PNG.) en arte de terminal. Nace como un fork del proyecto <a href="https://github.com/radare/tiv" target="_blank" rel="noopener noreferrer">radare/tiv</a> (<em>Terminal Image Viewer</em>), adaptándolo a una arquitectura web con 5 modos de renderizado distintos.</p>
+      <p>El proyecto está desarrollado en Node.js con Express, usando <strong>sharp</strong> para el procesamiento de imágenes y <strong>node-canvas</strong> para el renderizado final. Cada modo implementa un algoritmo específico de reducción de color y mapeo visual.</p>
+    </section>
+
+    <section aria-labelledby="video-title">
+      <h2 id="video-title">Video: Proyecto original TIV</h2>
+      <p>Este video explica el funcionamiento de <strong>radare/tiv</strong>, el proyecto original del cual nació IFTAR.</p>
+      <figure>
+        <video controls width="720">
+          <source src="/videos/uso_de_tiv.mp4" type="video/mp4">
+        </video>
+        <figcaption>Video explicativo del proyecto radare/tiv — Terminal Image Viewer</figcaption>
+      </figure>
+    </section>
+
+    <section aria-labelledby="pipeline-title">
+      <h2 id="pipeline-title">Pipeline de procesamiento</h2>
+      <p>Todos los modos comparten el mismo flujo de procesamiento. La diferencia está en cómo se procesa cada píxel dentro del bucle de renderizado:</p>
+      <ol>
+        <li><strong>Carga y rotación</strong> — La imagen se carga con <code>sharp</code> y se rota automáticamente según metadatos EXIF.</li>
+        <li><strong>Ajuste de contraste</strong> — Si está activado el autocontraste, se aplica ecualización de histograma.</li>
+        <li><strong>Redimensionado</strong> — Se escala la imagen al ancho solicitado (20 a 500 columnas) manteniendo la proporción original.</li>
+        <li><strong>Extracción de píxeles</strong> — Se elimina el canal alfa y se obtiene un buffer RAW con los valores RGB de cada píxel.</li>
+        <li><strong>Renderizado</strong> — Se crea un canvas y se itera píxel por píxel (de 2 en 2 en altura) aplicando la lógica del modo seleccionado.</li>
+        <li><strong>Streaming</strong> — El canvas se convierte en un stream PNG o JPG y se envía como respuesta HTTP.</li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="modes-detail-title">
+      <h2 id="modes-detail-title">Modos de renderizado</h2>
+
+      <article aria-labelledby="mode-detail-ascii">
+        <h3 id="mode-detail-ascii">Modo ASCII</h3>
+        <p>Convierte cada píxel a un carácter que representa su nivel de brillo. Los píxeles más oscuros se representan con caracteres "llenos" y los más claros con caracteres "vacíos".</p>
+        <section>
+          <h4>Lógica</h4>
+          <p>Para cada píxel se calcula la luminancia usando el estándar <strong>BT.709</strong> y se mapea a un índice dentro de la paleta de caracteres seleccionada.</p>
+          <p>Paletas disponibles: <em>original</em> (10 chars), <em>conservative</em> (13 chars), <em>expanded</em> (16 chars), <em>detailed</em> (12 chars).</p>
+        </section>
+        <section>
+          <h4>Fórmula clave</h4>
+          <details>
+            <summary>Ver fórmula de luminancia BT.709</summary>
+            <p><code>L = 0.2126 × R + 0.7152 × G + 0.0722 × B</code></p>
+            <p>Donde <var>R</var>, <var>G</var> y <var>B</var> son los valores del píxel (0-255).</p>
+            <p>El carácter se selecciona con: <code>índice = min(⌊L / (255 / N)⌋, N - 1)</code>, donde <var>N</var> es el tamaño de la paleta.</p>
+          </details>
+          <details>
+            <summary>Ver métodos alternativos de luminancia</summary>
+            <p><strong>NTSC:</strong> <code>L = 0.299 × R + 0.587 × G + 0.114 × B</code></p>
+            <p><strong>Gamma:</strong> <code>L = (0.299 × R<sup>2.2</sup> + 0.587 × G<sup>2.2</sup> + 0.114 × B<sup>2.2</sup>)<sup>1/2.2</sup></code></p>
+          </details>
+        </section>
+        <figure>
+          <img src="/images/ascii-inicial.jpg" alt="Fotografía original para modo ASCII" width="400" loading="lazy" decoding="async">
+          <img src="/images/ascii-producto.png" alt="Resultado de la conversión a ASCII" width="400" loading="lazy" decoding="async">
+          <figcaption>Antes y después — Modo ASCII con densidad original</figcaption>
+        </figure>
+      </article>
+
+      <article aria-labelledby="mode-detail-ansi">
+        <h3 id="mode-detail-ansi">Modo ANSI</h3>
+        <p>Reduce la imagen a los 8 colores básicos de terminal. Cada celda (de 2 píxeles de alto) usa el píxel inferior como color de fondo y el superior como color de texto, simulando el efecto de un terminal clásico.</p>
+        <section>
+          <h4>Lógica</h4>
+          <p>Se calcula la distancia entre el color de cada píxel y los 8 colores de la paleta ANSI usando distintos métodos cromáticos. El color más cercano es el que se asigna. El color de primer plano se oscurece restando 20 a cada canal RGB para diferenciarlo del fondo.</p>
+        </section>
+        <section>
+          <h4>Fórmulas clave</h4>
+          <details>
+            <summary>Ver métodos de distancia de color</summary>
+            <p><strong>Clásico (euclidiana):</strong> <code>d = √((R₁−R₂)² + (G₁−G₂)² + (B₁−B₂)²)</code></p>
+            <p><strong>Perceptual (ponderado):</strong> <code>d = √(2×(R₁−R₂)² + 4×(G₁−G₂)² + 3×(B₁−B₂)²)</code></p>
+            <p><strong>CIEDE2000:</strong> Distancia en espacio de color Lab con correcciones perceptuales avanzadas.</p>
+            <p><strong>CMC l:c:</strong> Distancia en espacio Lab con pesos para luminancia y cromaticidad.</p>
+          </details>
+          <details>
+            <summary>Ver algoritmo de dithering Floyd-Steinberg</summary>
+            <p>El error de cuantificación se distribuye a los píxeles vecinos:</p>
+            <ul>
+              <li>(x+1, y) → 7/16 del error</li>
+              <li>(x−1, y+1) → 3/16 del error</li>
+              <li>(x, y+1) → 5/16 del error</li>
+              <li>(x+1, y+1) → 1/16 del error</li>
+            </ul>
+          </details>
+        </section>
+        <figure>
+          <img src="/images/ansi-inicial.jpg" alt="Fotografía original para modo ANSI" width="400" loading="lazy" decoding="async">
+          <img src="/images/ansi-producto.png" alt="Resultado de la conversión a ANSI" width="400" loading="lazy" decoding="async">
+          <figcaption>Antes y después — Modo ANSI 8 colores</figcaption>
+        </figure>
+      </article>
+
+      <article aria-labelledby="mode-detail-grey">
+        <h3 id="mode-detail-grey">Modo Grey</h3>
+        <p>Convierte la imagen a 24 tonos de gris usando la paleta xterm (índices 232 a 255). Es el modo ideal para lograr un efecto monocromático limpio y detallado.</p>
+        <section>
+          <h4>Lógica</h4>
+          <p>Se calcula la luminancia de cada píxel con BT.709 y se mapea al tono de gris más cercano dentro de la paleta de 24 niveles. Soporta dithering para suavizar la transición entre tonos.</p>
+        </section>
+        <section>
+          <h4>Fórmula clave</h4>
+          <details>
+            <summary>Ver fórmula de mapeo a grises</summary>
+            <p><code>L = BT.709(R, G, B)</code></p>
+            <p><code>índice = max(0, min(231, round(L × 232 / 256)))</code></p>
+            <p>El color final es <code>GREY_PALETTE[índice + 232]</code></p>
+          </details>
+        </section>
+        <figure>
+          <img src="/images/grey-inicial.jpg" alt="Fotografía original para modo gris" width="400" loading="lazy" decoding="async">
+          <img src="/images/grey-producto.png" alt="Resultado de la conversión a escala de grises" width="400" loading="lazy" decoding="async">
+          <figcaption>Antes y después — Modo Grey</figcaption>
+        </figure>
+      </article>
+
+      <article aria-labelledby="mode-detail-256">
+        <h3 id="mode-detail-256">Modo 256</h3>
+        <p>Utiliza la paleta completa de 256 colores xterm para una reproducción cromática más fiel. Es el modo con mayor riqueza de color después del RGB.</p>
+        <section>
+          <h4>Lógica</h4>
+          <p>Cada píxel se mapea al color más cercano de la paleta de 256 colores usando métodos de distancia cromática. Para optimizar el rendimiento, implementa un <strong>caché LRU</strong> (<em>Least Recently Used</em>) de 8000 entradas que evita recalcular el mapeo de colores repetidos.</p>
+        </section>
+        <section>
+          <h4>Detalles técnicos</h4>
+          <details>
+            <summary>Ver funcionamiento del caché LRU</summary>
+            <p>Cuando un color RGB ya fue mapeado previamente, se devuelve el resultado desde el caché en lugar de iterar los 256 colores de la paleta. Si el caché supera las 8000 entradas, se elimina el elemento menos usado.</p>
+          </details>
+        </section>
+        <figure>
+          <img src="/images/256-inicial.jpg" alt="Fotografía original para modo 256 colores" width="400" loading="lazy" decoding="async">
+          <img src="/images/256-producto.png" alt="Resultado de la conversión a 256 colores" width="400" loading="lazy" decoding="async">
+          <figcaption>Antes y después — Modo 256 colores xterm</figcaption>
+        </figure>
+      </article>
+
+      <article aria-labelledby="mode-detail-rgb">
+        <h3 id="mode-detail-rgb">Modo RGB</h3>
+        <p>Actúa como un passthrough de color: los píxeles conservan su color original sin reducción de paleta. Solo se aplican ajustes de brillo y dithering opcional.</p>
+        <section>
+          <h4>Lógica</h4>
+          <p>Los valores RGB se mantienen intactos con un simple <em>clamping</em> al rango 0-255. Este modo es útil para cambiar el formato de salida (PNG a JPG) o aplicar efectos suaves sin perder fidelidad cromática.</p>
+        </section>
+        <section>
+          <h4>Fórmula clave</h4>
+          <details>
+            <summary>Ver fórmula de clamping</summary>
+            <p><code>R' = clamp(R + brightness, 0, 255)</code></p>
+            <p><code>G' = clamp(G + brightness, 0, 255)</code></p>
+            <p><code>B' = clamp(B + brightness, 0, 255)</code></p>
+          </details>
+        </section>
+        <figure>
+          <img src="/images/rgb-inicial.jpg" alt="Fotografía original para modo RGB" width="400" loading="lazy" decoding="async">
+          <img src="/images/rgb-producto.png" alt="Resultado de la conversión a RGB" width="400" loading="lazy" decoding="async">
+          <figcaption>Antes y después — Modo RGB completo</figcaption>
+        </figure>
+      </article>
+    </section>
+
+    <section aria-labelledby="credits-title">
+      <h2 id="credits-title">Créditos</h2>
+      <p>IFTAR no existiría sin el trabajo de la comunidad open source. Un agradecimiento especial a:</p>
+      <ul>
+        <li>
+          <strong>radare/tiv</strong> — Proyecto original de Terminal Image Viewer. Repositorio: <a href="https://github.com/radare/tiv" target="_blank" rel="noopener noreferrer">github.com/radare/tiv</a>
+        </li>
+      </ul>
+      <p>IFTAR es mantenido por <strong>Sergio Cuevas</strong>.</p>
+      <p>
+        <a href="https://github.com/Matheuzz-underdog/iftar" target="_blank" rel="noopener noreferrer">
+          Visitá el repositorio de IFTAR en GitHub
+        </a>
+        — probalo, forkearlo, mejorarlo.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <h5>Proyecto derivado de <a href="https://github.com/radare/tiv" target="_blank" rel="noopener noreferrer">radare/tiv</a> — Terminal Image Viewer</h5>
+    <h6>Desarrollado por <a href="https://github.com/Matheuzz-underdog/iftar" target="_blank" rel="noopener noreferrer">Sergio Cuevas</a></h6>
+  </footer>
+
+</body>
+</html>
