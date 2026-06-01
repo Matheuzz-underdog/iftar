@@ -4,8 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IFTAR</title>
+  <!-- <link rel="stylesheet" href="/public/stylesheets/style.css"> -->
   <meta name="description" content="IFTAR: convertí tus imágenes a arte de terminal con 5 modos de renderizado: ASCII, ANSI, GREY, 256 y RGB.">
 </head>
+
+<style>
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .texts {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .container article {
+    margin: 10px;
+  }
+
+  .container article img {
+    width: 400px;
+    height: 550px;
+    
+  }
+</style>
+
 <body>
   <header>
     <nav aria-label="Navegación principal">
@@ -16,14 +43,14 @@
   </header>
 
   <main>
-    <section aria-labelledby="hero-title">
-      <h1 id="hero-title">IFTAR</h1>
+    <section>
+      <h1>IFTAR</h1>
       <p><strong>I</strong>mage <strong>F</strong>orge <strong>T</strong>o <strong>A</strong>rt <strong>R</strong>etro — Convertí tus imágenes en arte de terminal al instante</p>
       <p>Subí una foto o imagen y transformala al instante en 5 estilos distintos: ASCII, ANSI, escala de grises, 256 colores o RGB. Inspirado en <a href="https://github.com/radare/tiv" target="_blank" rel="noopener noreferrer">radare/tiv</a>.</p>
     </section>
 
-    <section aria-labelledby="tool-title">
-      <h2 id="tool-title">Probá el convertidor</h2>
+    <section>
+      <h2>Probá el convertidor</h2>
       <p>Seleccioná un modo, ajustá los parámetros y subí una imagen para ver el resultado.</p>
 
       <div>
@@ -57,9 +84,11 @@
       <div id="fileError" role="alert"></div>
     </section>
 
-    <section aria-labelledby="modes-title">
-      <h2 id="modes-title">Modos disponibles</h2>
-      <p>Cada modo ofrece un estilo visual distinto. Estos son los resultados que podés obtener:</p>
+    <section aria-labelledby="modes-title", class="container" >
+      <div class="texts">
+        <h2 id="modes-title">Modos disponibles</h2>
+        <p>Cada modo ofrece un estilo visual distinto. Estos son los resultados que podés obtener:</p>
+      </div>
 
       <article>
         <h3>ASCII</h3>
